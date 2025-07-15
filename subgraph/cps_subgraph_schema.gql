@@ -1,0 +1,281 @@
+schema
+  @link(url: "https://specs.apollo.dev/link/v1.0")
+{
+  query: Query
+}
+
+extend schema
+  @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable", "@external"])
+
+directive @link(url: String, as: String, for: link__Purpose, import: [link__Import]) repeatable on SCHEMA
+
+directive @key(fields: federation__FieldSet!, resolvable: Boolean = true) repeatable on OBJECT | INTERFACE
+
+directive @federation__requires(fields: federation__FieldSet!) on FIELD_DEFINITION
+
+directive @federation__provides(fields: federation__FieldSet!) on FIELD_DEFINITION
+
+directive @external(reason: String) on OBJECT | FIELD_DEFINITION
+
+directive @federation__tag(name: String!) repeatable on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+directive @federation__extends on OBJECT | INTERFACE
+
+directive @shareable on OBJECT | FIELD_DEFINITION
+
+directive @federation__inaccessible on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ARGUMENT_DEFINITION | SCALAR | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION
+
+directive @federation__override(from: String!) on FIELD_DEFINITION
+
+type Query {
+  """Fetches a user by their ID."""
+  user(id: ID!): User
+
+  """Fetches all available users."""
+  users: [User]
+
+  """Fetches a company by its ID."""
+  company(id: ID!): Company
+
+  """Fetches all available companies."""
+  companies: [Company]
+  _entities(representations: [_Any!]!): [_Entity]!
+  _service: _Service!
+}
+
+"""Represents a user in the system."""
+type User
+  @key(fields: "id")
+{
+  id: ID!
+  name: String
+  email: String
+
+  """The company the user belongs to."""
+  company: Company
+}
+
+"""Represents a company in the system."""
+type Company
+  @key(fields: "id")
+{
+  id: ID!
+  name: String
+  industry: String
+
+  """List of users belonging to this company."""
+  users: [User]
+}
+
+type RecipeCostPerServe {
+  """represents cost per serve dollar amount"""
+  recipeCostPerServePrice: Float!
+
+  """represents cost per serve broadcast banner"""
+  recipeCostPerServeBanner: BasicCoreBroadcastBanner
+}
+
+extend type RecipeDetail
+  @key(fields: "id")
+{
+  id: String! @external
+  recipeCostPerServe: RecipeCostPerServe
+}
+
+type BasicCoreBroadcastBanner
+  @shareable
+{
+  """
+  UI components of the broadcast banner, such as title, subtitle, and style.
+  """
+  broadcastBannerUI: CoreBroadcastBannerUI!
+
+  """An optional action associated with the banner"""
+  broadcastBannerAction: Action
+
+  """An optional label for the action, providing a call-to-action text."""
+  broadcastBannerActionLabel: String
+
+  """Analytics data to track impressions and interactions with the banner."""
+  impressionAnalytics: Analytics
+
+  """
+  Unique ID used in FE when user dismiss the banner to ensure it's never displayed again
+  (Required when broadcastBannerDismissible is true)
+  """
+  broadcastBannerId: String
+
+  """Display "X" to dismiss banner when true"""
+  broadcastBannerDismissible: Boolean!
+
+  """
+  Analytics data to track when user clicks the dismiss button of the banner
+  """
+  broadcastBannerDismissAnalytics: Analytics
+}
+
+"""Core Broadcast Banner UI Component"""
+type CoreBroadcastBannerUI
+  @shareable
+{
+  """The main title text displayed on the banner (required)."""
+  title: String!
+
+  """An optional subtitle text that appears below the title."""
+  subtitle: String
+
+  """Specifies the style of the banner"""
+  style: CoreBroadcastBannerStyle!
+
+  """Icon asset associated with the banner"""
+  icon: IconAsset!
+}
+
+type Action
+  @shareable
+{
+  """
+  Type of the action. e.g. "LINK", "APPLOCAL"
+  """
+  type: ActionType!
+
+  """
+  If type is LINK, the action needs to be an url, deeplink etc.
+  If type is APPLOCAL, the action is a custom identifier maps
+    to a custom function on FE. These constant local actions perform
+    consistent and same thing anywhere in the app.
+    * openBottomSheet?id=bottomSheet1
+  """
+  action: String!
+
+  """Unique identifier to assist FE to identify the action"""
+  id: String
+
+  """Optional Analytics fields to be used on FE for actions"""
+  analytics: Analytics
+}
+
+enum ActionType {
+  LINK
+  APPLOCAL
+}
+
+enum CoreBroadcastBannerStyle {
+  """A standard style, typically used as a default."""
+  STANDARD
+
+  """A style that contrasts with the background for better visibility."""
+  ON_CONTRAST
+
+  """A style specific to Woolworths branding."""
+  WOOLWORTHS
+
+  """A style specific to Everyday branding."""
+  EVERYDAY
+
+  """A style specific to Big W branding."""
+  BIG_W
+}
+
+"""Icon hosted externally"""
+type HostedIcon
+  @shareable
+{
+  """Image URL"""
+  url: String!
+}
+
+type CoreIcon
+  @shareable
+{
+  """Icon name per Core Design System"""
+  coreIconName: String!
+}
+
+union IconAsset = HostedIcon | CoreIcon
+
+type Analytics
+  @shareable
+{
+  """
+  app.Section
+  example: Other
+  """
+  appSection: String
+
+  """
+  screen.Name
+  example: eComm campaign screen
+  """
+  screenName: String
+
+  """
+  screen.Type
+  example: campaign
+  """
+  screenType: String
+
+  """
+  event.Action
+  example: impression
+  """
+  eventAction: String
+
+  """
+  event.Category
+  example: marketing landing page
+  """
+  eventCategory: String
+
+  """event.Label"""
+  eventLabel: String
+
+  """event.Value"""
+  eventValue: String
+
+  """event.Description"""
+  eventDescription: String
+
+  """tealium_event"""
+  tealiumEvent: String
+
+  """Any additional analytics fields to be passed as-is"""
+  extraContent: [AnalyticsExtraContent!]
+}
+
+type AnalyticsExtraContent
+  @shareable
+{
+  """The key to be passed as-is (e.g. acs.StitchID)"""
+  key: String!
+
+  """Optional value, Nullable so the implementation can be explicit"""
+  value: String
+
+  """Optional array value, Nullable so the implementation can be explicit"""
+  values: [String!]
+}
+
+enum link__Purpose {
+  """
+  `SECURITY` features provide metadata necessary to securely resolve fields.
+  """
+  SECURITY
+
+  """
+  `EXECUTION` features provide metadata necessary for operation execution.
+  """
+  EXECUTION
+}
+
+scalar link__Import
+
+scalar federation__FieldSet
+
+scalar _Any
+
+type _Service {
+  sdl: String
+}
+
+union _Entity = Company | RecipeDetail | User
